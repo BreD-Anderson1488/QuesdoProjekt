@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>QuestDo ⚔️</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08070f;--s1:#121020;--s2:#1a1830;--s3:#252340;
+  --acc:#7c5cff;--acc2:#ff5c8a;
+  --gold:#ffd700;--text:#e8e6ff;--text2:#a8a6c8;--muted:#4e4c6a;
+  --r:14px;--rs:10px;
+  --pri-hi:#e84545;--pri-mid:#f0c040;--pri-lo:#45e88a;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+
+#bgc{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.55}
+
+/* ── Titlebar ── */
+.tbar{height:38px;background:rgba(18,16,32,.95);border-bottom:1px solid rgba(124,92,255,.18);display:flex;align-items:center;padding:0 16px;gap:8px;position:fixed;top:0;left:0;right:0;z-index:1000;backdrop-filter:blur(24px);-webkit-app-region:drag}
+.tbar-ico{-webkit-app-region:no-drag;font-size:15px}
+.tbar-title{font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px}
+.tbar-sep{flex:1}
+.tbar-right{font-size:11px;color:var(--muted);-webkit-app-region:no-drag;display:flex;gap:14px}
+.tbar-right b{color:var(--text2);font-weight:600}
+
+/* ── HUD ── */
+.hud-wrap{background:rgba(18,16,32,.9);border-bottom:1px solid rgba(124,92,255,.18);padding:12px 22px;position:fixed;top:38px;left:0;right:0;z-index:100;backdrop-filter:blur(20px)}
+.hud{display:flex;gap:14px;align-items:center;max-width:900px;margin:0 auto;flex-wrap:wrap}
+.stat{display:flex;align-items:center;gap:8px;flex:1;min-width:110px}
+.stat-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);min-width:22px;text-transform:uppercase}
+.bar-track{flex:1;height:9px;background:var(--s3);border-radius:5px;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;transition:width .55s cubic-bezier(.4,0,.2,1),background .5s;position:relative}
+.bar-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 40%,rgba(255,255,255,.15));border-radius:5px}
+.hp-fill.danger{animation:hpPulse 1.1s ease-in-out infinite}
+@keyframes hpPulse{0%,100%{box-shadow:0 0 8px #e84545}50%{box-shadow:0 0 24px #e84545,0 0 42px rgba(232,69,69,.3)}}
+.stat-val{font-size:11px;color:var(--muted);min-width:46px;font-weight:500}
+.lvl-box{background:linear-gradient(135deg,var(--acc),#a87dff);border-radius:10px;padding:5px 16px;font-size:14px;font-weight:900;color:#fff;box-shadow:0 0 18px rgba(124,92,255,.45);cursor:default;white-space:nowrap}
+.lvl-box.pop{animation:lvlPop .55s cubic-bezier(.36,.07,.19,.97)}
+@keyframes lvlPop{0%,100%{transform:scale(1)}35%{transform:scale(1.5)}65%{transform:scale(.88)}82%{transform:scale(1.08)}}
+.q-count{font-size:10px;color:var(--muted);text-align:center;margin-top:3px}
+
+@keyframes shake{0%,100%{transform:translate(0)}12%{transform:translate(-9px,-2px)}25%{transform:translate(9px,2px)}37%{transform:translate(-7px)}50%{transform:translate(7px)}70%{transform:translate(-4px)}85%{transform:translate(4px)}}
+.shk{animation:shake .55s both}
+@keyframes redFlash{0%{background:rgba(232,69,69,0)}25%{background:rgba(232,69,69,.14)}100%{background:rgba(232,69,69,0)}}
+.red-flash{animation:redFlash .5s ease}
+
+/* ── Page ── */
+.page{max-width:900px;margin:0 auto;padding:110px 18px 90px;position:relative;z-index:1}
+
+/* ── Streak ── */
+.streak-bar{display:flex;align-items:center;gap:10px;background:var(--s1);border:1px solid rgba(255,215,0,.12);border-radius:var(--rs);padding:10px 16px;margin-bottom:16px}
+.streak-flame{font-size:22px;animation:flamePulse 1.4s ease-in-out infinite}
+@keyframes flamePulse{0%,100%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.12) rotate(3deg)}}
+.streak-info{flex:1}
+.streak-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+.streak-val{font-size:18px;font-weight:800;color:var(--gold);line-height:1}
+.streak-best{font-size:11px;color:var(--muted);margin-top:2px}
+.day-dots{display:flex;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--s3);border:1px solid rgba(255,255,255,.06);transition:all .3s}
+.dot.on{background:var(--gold);box-shadow:0 0 6px rgba(255,215,0,.5)}
+
+/* ── Achievements ── */
+.ach-sect{margin-bottom:16px}
+.ach-sect-title{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.ach-row{display:flex;gap:7px;flex-wrap:wrap}
+.ach-chip{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid rgba(255,255,255,.05);border-radius:30px;padding:5px 11px;font-size:11px;font-weight:600;color:var(--muted);opacity:.38;cursor:default;transition:all .35s}
+.ach-chip.on{opacity:1;border-color:rgba(124,92,255,.4);background:rgba(124,92,255,.12);color:var(--text)}
+.ach-chip.pop{animation:achPop .55s cubic-bezier(.34,1.56,.64,1)}
+@keyframes achPop{from{transform:scale(.6);opacity:0}to{transform:scale(1)}}
+
+/* ── Add quest card ── */
+.add-card{background:var(--s1);border:1px solid rgba(124,92,255,.14);border-radius:var(--r);padding:18px 20px;margin-bottom:18px;transition:border-color .2s,box-shadow .2s}
+.add-card:focus-within{border-color:rgba(124,92,255,.5);box-shadow:0 0 0 3px rgba(124,92,255,.09),0 10px 32px rgba(0,0,0,.35)}
+.add-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:12px}
+
+/* Priority tabs */
+.pri-tabs{display:flex;gap:6px;margin-bottom:12px}
+.pri-tab{
+  flex:1;padding:9px 6px;border-radius:var(--rs);border:2px solid transparent;
+  font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;
+  background:var(--s2);color:var(--muted);
+  transition:all .2s;text-align:center;
+}
+.pri-tab[data-p="high"]{border-color:rgba(232,69,69,.2)}
+.pri-tab[data-p="high"].active{background:rgba(232,69,69,.15);border-color:#e84545;color:#e84545;box-shadow:0 0 12px rgba(232,69,69,.2)}
+.pri-tab[data-p="mid"]{border-color:rgba(240,192,64,.2)}
+.pri-tab[data-p="mid"].active{background:rgba(240,192,64,.12);border-color:#f0c040;color:#f0c040;box-shadow:0 0 12px rgba(240,192,64,.15)}
+.pri-tab[data-p="low"]{border-color:rgba(69,232,138,.2)}
+.pri-tab[data-p="low"].active{background:rgba(69,232,138,.1);border-color:#45e88a;color:#45e88a;box-shadow:0 0 12px rgba(69,232,138,.15)}
+
+.add-row{display:flex;gap:8px;flex-wrap:wrap}
+.add-row input{flex:1;min-width:180px;padding:10px 14px;border-radius:var(--rs);border:1.5px solid var(--s3);background:var(--s2);color:var(--text);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s,box-shadow .2s}
+.add-row input:focus{border-color:var(--acc);box-shadow:0 0 0 2px rgba(124,92,255,.15)}
+.add-row input::placeholder{color:var(--muted)}
+.add-row select{padding:10px 10px;border-radius:var(--rs);border:1.5px solid var(--s3);background:var(--s2);color:var(--text);font-size:13px;font-family:inherit;outline:none;cursor:pointer;transition:border-color .2s,background .2s}
+.add-row select:focus{border-color:var(--acc)}
+.btn-add{padding:10px 22px;border-radius:var(--rs);border:none;background:linear-gradient(135deg,var(--acc),#a07dff);color:#fff;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 18px rgba(124,92,255,.38);transition:transform .15s,box-shadow .15s;white-space:nowrap}
+.btn-add:hover{transform:translateY(-1px);box-shadow:0 7px 24px rgba(124,92,255,.52)}
+.btn-add:active{transform:translateY(1px)}
+
+/* ── Quest cards ── */
+.qlist{display:flex;flex-direction:column;gap:10px;margin-bottom:26px}
+.qcard{background:var(--s1);border:1px solid rgba(255,255,255,.05);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden;animation:cardIn .3s cubic-bezier(.4,0,.2,1) both;transition:transform .2s,box-shadow .2s,border-color .2s}
+.qcard::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.qcard.p-high::before{background:linear-gradient(180deg,#e84545,#ff8080)}
+.qcard.p-mid::before{background:linear-gradient(180deg,#f0c040,#ffe080)}
+.qcard.p-low::before{background:linear-gradient(180deg,#45e88a,#80ffb8)}
+.qcard:hover{transform:translateY(-2px);box-shadow:0 10px 36px rgba(0,0,0,.4),0 0 0 1px rgba(124,92,255,.2);border-color:rgba(124,92,255,.18)}
+@keyframes cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardOut{to{opacity:0;transform:translateX(70px) scale(.9)}}
+.qcard.out{animation:cardOut .28s ease forwards}
+@keyframes doneGlow{0%{background:var(--s1)}45%{background:rgba(69,232,138,.09)}100%{background:var(--s1)}}
+@keyframes failGlow{0%{background:var(--s1)}45%{background:rgba(232,69,69,.09)}100%{background:var(--s1)}}
+.qcard.done-fx{animation:doneGlow .35s ease}
+.qcard.fail-fx{animation:failGlow .35s ease}
+
+/* Priority badge on card */
+.q-pri-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  padding:3px 9px;border-radius:20px;
+}
+.q-pri-badge.p-high{background:rgba(232,69,69,.15);color:#e84545;border:1px solid rgba(232,69,69,.3)}
+.q-pri-badge.p-mid{background:rgba(240,192,64,.12);color:#f0c040;border:1px solid rgba(240,192,64,.25)}
+.q-pri-badge.p-low{background:rgba(69,232,138,.1);color:#45e88a;border:1px solid rgba(69,232,138,.2)}
+
+/* Deadline badge */
+.q-dead-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;
+  background:rgba(124,92,255,.12);color:var(--acc);border:1px solid rgba(124,92,255,.2);
+}
+.q-dead-badge.overdue{background:rgba(232,69,69,.12);color:#e84545;border-color:rgba(232,69,69,.25);animation:overdueFlash 1.5s ease-in-out infinite}
+@keyframes overdueFlash{0%,100%{opacity:1}50%{opacity:.5}}
+
+.q-title{font-size:15px;font-weight:600;line-height:1.4;margin-bottom:7px;padding-left:6px}
+.q-meta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:13px;padding-left:6px}
+.q-actions{display:flex;gap:8px}
+.btn-done,.btn-fail{flex:1;padding:9px 12px;border-radius:var(--rs);border:none;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;overflow:hidden}
+.btn-done{background:linear-gradient(135deg,#22974e,#45e88a);color:#041a0a;box-shadow:0 3px 12px rgba(69,232,138,.2)}
+.btn-fail{background:linear-gradient(135deg,#9e2020,#e84545);color:#fff;box-shadow:0 3px 12px rgba(232,69,69,.18)}
+.btn-done:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(69,232,138,.38)}
+.btn-fail:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(232,69,69,.32)}
+.btn-done:active,.btn-fail:active{transform:scale(.97)}
+
+/* ── Empty ── */
+.empty{text-align:center;padding:52px 20px;color:var(--muted)}
+.empty-ico{font-size:52px;margin-bottom:14px;opacity:.45;animation:emptyFloat 3s ease-in-out infinite}
+@keyframes emptyFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.empty-t{font-size:15px;line-height:1.6}
+.empty-h{font-size:12px;margin-top:5px;opacity:.5}
+
+/* ── Scoreboard ── */
+.sb{background:var(--s1);border:1px solid rgba(255,215,0,.1);border-radius:var(--r);padding:20px;position:relative;overflow:hidden}
+.sb::after{content:'🏆';position:absolute;right:-10px;bottom:-10px;font-size:90px;opacity:.04;pointer-events:none}
+.sb-title{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--text2);margin-bottom:14px}
+.sb-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.sb-item{display:flex;align-items:center;gap:12px;background:var(--s2);border-radius:var(--rs);padding:11px 14px;border:1px solid rgba(255,255,255,.04);transition:background .2s}
+.sb-item:hover{background:var(--s3)}
+.sb-rank{font-size:20px;min-width:28px}
+.sb-info{flex:1}
+.sb-level{font-size:14px;font-weight:700}
+.sb-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.sb-empty{font-size:13px;color:var(--muted);text-align:center;padding:6px 0}
+
+/* ── Particles ── */
+.ptc{position:fixed;pointer-events:none;z-index:9990;font-size:13px;font-weight:800;white-space:nowrap;animation:ptcFly 1s ease-out forwards}
+@keyframes ptcFly{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-100px) scale(.3) rotate(15deg)}}
+
+/* ── Praise popup ── */
+#praise{position:fixed;top:50%;left:50%;z-index:5000;transform:translate(-50%,-50%) scale(0);pointer-events:none}
+#praise.show{animation:praiseIn .35s cubic-bezier(.34,1.56,.64,1) forwards,praiseOut .35s ease .9s forwards}
+@keyframes praiseIn{to{transform:translate(-50%,-50%) scale(1)}}
+@keyframes praiseOut{from{opacity:1;transform:translate(-50%,-50%) scale(1)}to{opacity:0;transform:translate(-50%,-58%) scale(.85)}}
+.praise-box{background:rgba(12,10,28,.97);border:2px solid rgba(124,92,255,.65);border-radius:20px;padding:22px 36px;text-align:center;box-shadow:0 0 60px rgba(124,92,255,.4),0 24px 60px rgba(0,0,0,.7);backdrop-filter:blur(20px);min-width:260px}
+.praise-text{font-size:22px;font-weight:900;color:#fff;text-shadow:0 0 20px rgba(124,92,255,.7);line-height:1.3}
+
+/* ── Level Up Screen ── */
+#lvl-screen{position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0}
+#lvl-screen.show{animation:lvlFadeIn .12s ease forwards}
+@keyframes lvlFadeIn{to{opacity:1}}
+.lvl-burst{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(124,92,255,.45) 0%,transparent 65%);animation:burstEx .9s ease-out forwards}
+@keyframes burstEx{from{transform:scale(0);opacity:1}to{transform:scale(3);opacity:0}}
+.lvl-center{position:relative;z-index:1;text-align:center;animation:lvlPop2 .65s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes lvlPop2{from{transform:scale(0) rotate(-8deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+.lvl-stars{font-size:36px;letter-spacing:10px;margin-bottom:6px}
+.lvl-word{font-size:46px;font-weight:900;color:#fff;text-shadow:0 0 40px rgba(124,92,255,.9);letter-spacing:4px}
+.lvl-num{font-size:88px;font-weight:900;color:var(--gold);display:block;line-height:1;text-shadow:0 0 40px rgba(255,215,0,.8)}
+.lvl-sub{font-size:14px;color:var(--text2);letter-spacing:3px;margin-top:4px}
+
+/* ── Achievement toast ── */
+#ach-toast{position:fixed;bottom:28px;right:22px;z-index:700;background:rgba(18,16,32,.97);border:1px solid rgba(124,92,255,.45);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:12px;min-width:240px;max-width:300px;box-shadow:0 10px 36px rgba(0,0,0,.55);opacity:0;transform:translateX(50px);transition:opacity .3s,transform .3s;pointer-events:none}
+#ach-toast.show{opacity:1;transform:translateX(0)}
+#ach-toast.hide{opacity:0;transform:translateX(50px)}
+.at-icon{font-size:30px}
+.at-label{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--acc);text-transform:uppercase;margin-bottom:2px}
+.at-name{font-size:14px;font-weight:700;color:var(--text)}
+.at-desc{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ── Game Over ── */
+#go-screen{position:fixed;inset:0;z-index:900;background:#04030d;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s}
+#go-screen.show{opacity:1;pointer-events:all}
+.go-bg-ptc{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.go-wrap{position:relative;z-index:1;text-align:center;max-width:500px;width:94%}
+.go-skull{font-size:76px;display:block;margin-bottom:12px;filter:drop-shadow(0 0 24px rgba(255,92,138,.55));animation:skullFloat 3s ease-in-out infinite}
+@keyframes skullFloat{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}
+.go-title{font-size:40px;font-weight:900;color:var(--acc2);margin-bottom:5px;text-shadow:0 0 30px rgba(255,92,138,.4)}
+.go-sub{font-size:14px;color:var(--muted);margin-bottom:26px;letter-spacing:.5px}
+.go-stats{display:flex;gap:10px;justify-content:center;margin-bottom:26px;flex-wrap:wrap}
+.go-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 18px;text-align:center;min-width:86px}
+.go-sv{font-size:24px;font-weight:900;color:var(--gold);display:block}
+.go-sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px}
+.go-top-lbl{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:10px}
+#go-score-list{list-style:none;display:flex;flex-direction:column;gap:7px;margin-bottom:24px}
+.go-si{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.04);border:1px solid transparent;border-radius:10px;padding:10px 14px}
+.go-si.new{background:rgba(124,92,255,.15);border-color:rgba(124,92,255,.4)}
+.go-si-rank{font-size:18px;min-width:26px}
+.go-si-lvl{font-size:14px;font-weight:700;flex:1;text-align:left}
+.go-si.new .go-si-lvl{color:var(--gold)}
+.go-si-sub{font-size:11px;color:var(--muted)}
+.go-new-tag{font-size:10px;font-weight:700;background:var(--acc);color:#fff;padding:2px 8px;border-radius:20px}
+.btn-restart{padding:13px 40px;border-radius:var(--rs);border:none;background:linear-gradient(135deg,var(--acc),#a07dff);color:#fff;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 4px 22px rgba(124,92,255,.42);transition:transform .15s,box-shadow .15s}
+.btn-restart:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(124,92,255,.58)}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+/* MOBILE ADAPTATION */
+@media (max-width: 768px) {
+    body {
+        padding: 10px 10px 80px;
+    }
+    h1 {
+        font-size: 24px;
+    }
+    .chat {
+        min-width: 100%;
+    }
+    .full-box {
+        width: 100%;
+        text-align: center;
+    }
+    .add-row {
+        flex-direction: column;
+    }
+    .add-row input,
+    .add-row select,
+    .btn-add {
+        width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgc"></canvas>
+
+<div id="lvl-screen">
+  <div class="lvl-burst"></div>
+  <div class="lvl-center">
+    <div class="lvl-stars">⭐ ✨ ⭐</div>
+    <div class="lvl-word">LEVEL UP</div>
+    <span class="lvl-num" id="lvl-num">2</span>
+    <div class="lvl-sub">УРОВЕНЬ ПОВЫШЕН</div>
+  </div>
+</div>
+
+<div id="praise"><div class="praise-box"><div class="praise-text" id="praise-text">🔥 Отлично!</div></div></div>
+
+<div id="ach-toast">
+  <div class="at-icon" id="at-icon">🏆</div>
+  <div><div class="at-label">🔓 Достижение!</div><div class="at-name" id="at-name"></div><div class="at-desc" id="at-desc"></div></div>
+</div>
+
+<div id="go-screen">
+  <div class="go-bg-ptc" id="go-ptc"></div>
+  <div class="go-wrap">
+    <span class="go-skull">💀</span>
+    <div class="go-title">ГЕРОЙ ПАЛ</div>
+    <div class="go-sub">HP опустился до нуля...</div>
+    <div class="go-stats">
+      <div class="go-stat"><span class="go-sv" id="go-sv-lvl">1</span><div class="go-sl">Уровень</div></div>
+      <div class="go-stat"><span class="go-sv" id="go-sv-xp">0%</span><div class="go-sl">XP</div></div>
+      <div class="go-stat"><span class="go-sv" id="go-sv-done">0</span><div class="go-sl">Квестов</div></div>
+      <div class="go-stat"><span class="go-sv" id="go-sv-str">0</span><div class="go-sl">Серия</div></div>
+    </div>
+    <div class="go-top-lbl">🏆 Зал Славы</div>
+    <ul id="go-score-list"></ul>
+    <button class="btn-restart" id="go-restart">⚔️ Воскреснуть</button>
+  </div>
+</div>
+
+<div class="tbar">
+  <span class="tbar-ico">⚔️</span>
+  <span class="tbar-title">QuestDo — RPG To-Do</span>
+  <div class="tbar-sep"></div>
+  <div class="tbar-right">Выполнено: <b id="tb-done">0</b> &nbsp;·&nbsp; Серия: <b id="tb-str">0</b> &nbsp;·&nbsp; Сессий: <b id="tb-ses">0</b></div>
+</div>
+
+<div class="hud-wrap">
+  <div class="hud">
+    <div class="stat">
+      <div class="stat-lbl">HP</div>
+      <div class="bar-track" style="flex:1"><div class="bar-fill hp-fill" id="hp-fill" style="width:100%;background:linear-gradient(90deg,#27a85f,#45e88a)"></div></div>
+      <span class="stat-val" id="hp-val">100/100</span>
+    </div>
+    <div class="stat">
+      <div class="stat-lbl">XP</div>
+      <div class="bar-track" style="flex:1"><div class="bar-fill xp-fill" id="xp-fill" style="width:0%;background:linear-gradient(90deg,#2da860,#45e88a)"></div></div>
+      <span class="stat-val" id="xp-val">0%</span>
+    </div>
+    <div>
+      <div class="lvl-box" id="lvl-box">LVL <span id="lvl-val">1</span></div>
+      <div class="q-count" id="q-count">0 квестов</div>
+    </div>
+  </div>
+</div>
+
+<main class="page">
+
+  <div class="streak-bar">
+    <div class="streak-flame">🔥</div>
+    <div class="streak-info">
+      <div class="streak-lbl">Серия выполнений</div>
+      <div class="streak-val" id="streak-val">0</div>
+      <div class="streak-best" id="streak-best">Рекорд: 0</div>
+    </div>
+    <div class="day-dots" id="day-dots"></div>
+  </div>
+
+  <div class="ach-sect">
+    <div class="ach-sect-title">🏅 Достижения</div>
+    <div class="ach-row" id="ach-row"></div>
+  </div>
+
+  <div class="add-card">
+    <div class="add-lbl">📜 Новый квест</div>
+    <div class="pri-tabs">
+      <button class="pri-tab active" data-p="high">🔴 Срочно</button>
+      <button class="pri-tab" data-p="mid">🟡 Обычно</button>
+      <button class="pri-tab" data-p="low">🟢 Когда-нибудь</button>
+    </div>
+    <div class="add-row">
+      <input id="new-quest" type="text" placeholder="Опишите свой квест..."/>
+      <select id="dur-sel"></select>
+      <button class="btn-add" id="add-btn">+ Добавить</button>
+    </div>
+  </div>
+
+  <div class="qlist" id="qlist"></div>
+
+  <div class="sb">
+    <div class="sb-title">🏆 Зал Славы — Топ 3 сессий</div>
+    <ul class="sb-list" id="sb-list"></ul>
+  </div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  QuestDo v4.0 — финальная версия
+//  Один HTML-файл, без зависимостей, file:// и Electron
+// ═══════════════════════════════════════════════════
+const SK='qd-v6';
+
+// ── State ──────────────────────────────────────────
+let hp=100,xp=0,level=1;
+let quests=[],highScores=[];
+let stats={done:0,failed:0,sessions:0,streak:0,bestStreak:0};
+let unlockedAchs=[];
+
+// ── Priority + Time system ────────────────────────
+const PRI_CONFIG={
+  high:{
+    label:'🔴 Срочно', cls:'p-high', badgeLabel:'Срочно',
+    times:[
+      {h:1,label:'1 час'},{h:3,label:'3 часа'},
+      {h:6,label:'6 часов'},{h:12,label:'12 часов'}
+    ]
+  },
+  mid:{
+    label:'🟡 Обычно', cls:'p-mid', badgeLabel:'Обычно',
+    times:[
+      {h:24,label:'1 день'},{h:48,label:'2 дня'},
+      {h:72,label:'3 дня'},{h:120,label:'5 дней'}
+    ]
+  },
+  low:{
+    label:'🟢 Когда-нибудь', cls:'p-low', badgeLabel:'Когда-нибудь',
+    times:[
+      {h:168,label:'1 неделя'},{h:336,label:'2 недели'},
+      {h:720,label:'1 месяц'},{h:2160,label:'3 месяца'}
+    ]
+  }
+};
+
+let currentPri='high';
+
+function updateDurOptions(){
+  durSel.innerHTML='';
+  PRI_CONFIG[currentPri].times.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.h;o.textContent='⏱ '+t.label;
+    durSel.appendChild(o);
+  });
+  // tint the select border to match priority
+  const colors={high:'#e84545',mid:'#f0c040',low:'#45e88a'};
+  durSel.style.borderColor=colors[currentPri]+'66';
+}
+
+// ── Achievements ───────────────────────────────────
+const ACHS=[
+  {id:'first', icon:'🗡️', name:'Первый квест',   desc:'Выполни первый квест',        chk:()=>stats.done>=1},
+  {id:'x5',    icon:'⚔️', name:'Ветеран',         desc:'Выполни 5 квестов',           chk:()=>stats.done>=5},
+  {id:'x10',   icon:'🛡️', name:'Страж',           desc:'Выполни 10 квестов',          chk:()=>stats.done>=10},
+  {id:'x25',   icon:'⚡', name:'Фарм',            desc:'Выполни 25 квестов',          chk:()=>stats.done>=25},
+  {id:'l5',    icon:'💎', name:'Мастер',          desc:'Достигни 5 уровня',           chk:()=>level>=5},
+  {id:'l10',   icon:'👑', name:'Легенда',         desc:'Достигни 10 уровня',          chk:()=>level>=10},
+  {id:'s5',    icon:'🔥', name:'На волне',        desc:'Серия 5 без провалов',        chk:()=>stats.streak>=5},
+  {id:'s10',   icon:'🌊', name:'Непрерывность',   desc:'Серия 10 без провалов',       chk:()=>stats.streak>=10},
+  {id:'surv',  icon:'❤️', name:'Живучий',         desc:'Пережить с HP ≤ 20',          chk:()=>hp<=20&&hp>0&&stats.done>0},
+  {id:'perf',  icon:'✨', name:'Без ошибок',      desc:'10 квестов, ноль провалов',   chk:()=>stats.done>=10&&stats.failed===0},
+];
+
+// ── Praises ────────────────────────────────────────
+const PRAISES=[
+  '🔥 Легенда! Ты справился!','⚡ Невероятно! Так держать!',
+  '👑 Герой! Квест выполнен!','💪 Ты машина! Продолжай!',
+  '🌟 Потрясающе! Ты непобедим!','🚀 Запредельно! Вперёд!',
+  '😤 Вот это сила воли! Красава!','🎯 Точно в цель! Ещё один!',
+  '🦁 Настоящий герой! Браво!','🏆 Чемпионский результат!',
+  '💫 Ты сверкаешь! Продолжай!','🌈 Невероятная продуктивность!',
+  '🔮 Магия продуктивности!','🎮 Ты в потоке! Game on!',
+  '⭐ Звёздный результат!',
+];
+
+// ── DOM ────────────────────────────────────────────
+const G=id=>document.getElementById(id),Q=s=>document.querySelector(s);
+const hpFill=G('hp-fill'),hpVal=G('hp-val'),xpFill=G('xp-fill'),xpVal=G('xp-val');
+const lvlVal=G('lvl-val'),lvlBox=G('lvl-box'),qCnt=G('q-count');
+const qlist=G('qlist'),sbList=G('sb-list'),achRow=G('ach-row');
+const lvlScreen=G('lvl-screen'),lvlNum=G('lvl-num');
+const praiseEl=G('praise'),praiseText=G('praise-text');
+const achToast=G('ach-toast'),atIcon=G('at-icon'),atName=G('at-name'),atDesc=G('at-desc');
+const goScreen=G('go-screen'),goScoreList=G('go-score-list'),goRestart=G('go-restart');
+const streakVal=G('streak-val'),streakBest=G('streak-best'),dayDots=G('day-dots');
+const tbDone=G('tb-done'),tbStr=G('tb-str'),tbSes=G('tb-ses');
+const newQuestIn=G('new-quest'),durSel=G('dur-sel'),addBtn=G('add-btn');
+
+// ── Canvas ─────────────────────────────────────────
+(()=>{
+  const c=G('bgc'),ctx=c.getContext('2d');
+  let W,H,pts=[];
+  const rsz=()=>{W=c.width=innerWidth;H=c.height=innerHeight;pts=[];
+    for(let i=0;i<55;i++)pts.push({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,r:Math.random()*1.4+.4,o:Math.random()*.3+.07})};
+  window.addEventListener('resize',rsz);rsz();
+  const draw=()=>{
+    ctx.clearRect(0,0,W,H);
+    ctx.strokeStyle='rgba(124,92,255,.032)';ctx.lineWidth=1;
+    for(let x=0;x<W;x+=50){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+    for(let y=0;y<H;y+=50){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+    pts.forEach(p=>{
+      p.x=(p.x+p.vx+W)%W;p.y=(p.y+p.vy+H)%H;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(124,92,255,${p.o})`;ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.hypot(dx,dy);
+      if(d<110){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);
+        ctx.strokeStyle=`rgba(124,92,255,${.07*(1-d/110)})`;ctx.lineWidth=.5;ctx.stroke()}
+    }
+    requestAnimationFrame(draw);
+  };draw();
+})();
+
+// ── Audio ──────────────────────────────────────────
+const AC=window.AudioContext||window.webkitAudioContext;
+const actx=AC?new AC():null;
+const ua=()=>{if(actx&&actx.state==='suspended')actx.resume().catch(()=>{})};
+const tone=(f,tp,d,dur,v)=>{if(!actx)return;const t=actx.currentTime+d;const o=actx.createOscillator(),g=actx.createGain();o.type=tp;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(actx.destination);o.start(t);o.stop(t+dur+.02)};
+const playCoin=()=>{ua();tone(1200,'square',0,.06,.12);tone(1700,'sine',.08,.06,.1)};
+const playLvlUp=()=>{ua();[880,1100,1320,1760].forEach((f,i)=>tone(f,'sine',i*.11,.22,.1));tone(2200,'sine',.48,.32,.07)};
+const playDmg=()=>{if(!actx)return;ua();const o=actx.createOscillator(),g=actx.createGain();o.type='triangle';o.frequency.setValueAtTime(260,actx.currentTime);o.frequency.exponentialRampToValueAtTime(52,actx.currentTime+.55);g.gain.setValueAtTime(.22,actx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+.6);o.connect(g);g.connect(actx.destination);o.start(actx.currentTime);o.stop(actx.currentTime+.65)};
+const playGO=()=>{if(!actx)return;ua();[800,600,400,200].forEach((f,i)=>tone(f,'sawtooth',.32*i,.38,.15))};
+const playAch=()=>{ua();tone(900,'sine',0,.08,.1);tone(1200,'sine',.1,.1,.08);tone(1500,'sine',.2,.16,.06)};
+const playPraise=()=>{ua();tone(1400,'sine',0,.06,.08);tone(1800,'sine',.07,.08,.06)};
+
+// ── Particles ──────────────────────────────────────
+const spawnPtc=(x,y,text,color,n=7)=>{for(let i=0;i<n;i++){const p=document.createElement('div');p.className='ptc';p.textContent=text;p.style.cssText=`left:${x+(Math.random()-.5)*90}px;top:${y+(Math.random()-.5)*45}px;color:${color};animation-delay:${Math.random()*.18}s;animation-duration:${.7+Math.random()*.5}s`;document.body.appendChild(p);p.addEventListener('animationend',()=>p.remove())}};
+
+const CONF_COLS=['#7c5cff','#ff5c8a','#ffd700','#45e88a','#5cffb8','#ff9f45'];
+const spawnConf=(x,y)=>{for(let i=0;i<16;i++){const el=document.createElement('div');el.className='conf';const col=CONF_COLS[Math.floor(Math.random()*CONF_COLS.length)];const ang=Math.random()*360,dist=60+Math.random()*80;const tx=Math.cos(ang*Math.PI/180)*dist,ty=Math.sin(ang*Math.PI/180)*dist;el.style.cssText=`position:fixed;left:${x}px;top:${y}px;width:8px;height:8px;border-radius:2px;background:${col};pointer-events:none;z-index:9989`;document.body.appendChild(el);el.animate([{transform:'translate(0,0) rotate(0deg) scale(1)',opacity:1},{transform:`translate(${tx}px,${ty+60}px) rotate(${360+Math.random()*360}deg) scale(.2)`,opacity:0}],{duration:900+Math.random()*500,delay:Math.random()*100,easing:'ease-out',fill:'forwards'}).onfinish=()=>el.remove()}};
+
+// ── Praise ─────────────────────────────────────────
+let praiseTimer=null;
+function showPraise(){
+  praiseText.textContent=PRAISES[Math.floor(Math.random()*PRAISES.length)];
+  praiseEl.classList.remove('show');void praiseEl.offsetWidth;
+  praiseEl.classList.add('show');playPraise();
+  clearTimeout(praiseTimer);praiseTimer=setTimeout(()=>praiseEl.classList.remove('show'),1650);
+}
+
+// ── Level Up ───────────────────────────────────────
+let lvlTimer=null;
+function showLvlUp(n){
+  lvlNum.textContent=n;lvlScreen.classList.add('show');
+  lvlBox.classList.remove('pop');void lvlBox.offsetWidth;lvlBox.classList.add('pop');
+  clearTimeout(lvlTimer);lvlTimer=setTimeout(()=>lvlScreen.classList.remove('show'),2000);
+}
+
+// ── Achievements ───────────────────────────────────
+function renderAchs(){
+  achRow.innerHTML='';
+  ACHS.forEach(a=>{
+    const el=document.createElement('div');
+    el.className='ach-chip'+(unlockedAchs.includes(a.id)?' on':'');
+    el.title=a.desc;el.id='ach-'+a.id;
+    el.textContent=a.icon+' '+a.name;
+    achRow.appendChild(el);
+  });
+}
+let atQ=[],atR=false;
+const queueAch=a=>{atQ.push(a);if(!atR)nextAch()};
+function nextAch(){
+  if(!atQ.length){atR=false;return}atR=true;const a=atQ.shift();
+  atIcon.textContent=a.icon;atName.textContent=a.name;atDesc.textContent=a.desc;
+  achToast.classList.remove('hide');achToast.classList.add('show');playAch();
+  setTimeout(()=>{achToast.classList.remove('show');achToast.classList.add('hide');setTimeout(nextAch,420)},3000);
+}
+function checkAchs(){
+  ACHS.forEach(a=>{
+    if(!unlockedAchs.includes(a.id)&&a.chk()){
+      unlockedAchs.push(a.id);
+      const el=G('ach-'+a.id);
+      if(el){el.classList.add('on','pop');setTimeout(()=>el.classList.remove('pop'),700)}
+      queueAch(a);saveGame();
+    }
+  });
+}
+
+// ── Streak ─────────────────────────────────────────
+function renderStreak(){
+  streakVal.textContent=stats.streak;
+  streakBest.textContent='Рекорд: '+stats.bestStreak;
+  tbStr.textContent=stats.streak;
+  dayDots.innerHTML='';
+  for(let i=0;i<7;i++){const d=document.createElement('div');d.className='dot'+(i<Math.min(stats.streak,7)?' on':'');dayDots.appendChild(d)}
+}
+
+// ── Deadline helpers ───────────────────────────────
+function deadlineLabel(addedAt,durationHours){
+  if(!addedAt||!durationHours)return null;
+  const deadline=new Date(addedAt+durationHours*3600000);
+  const now=Date.now();
+  const diff=deadline-now;
+  if(diff<0){
+    const over=Math.round(-diff/3600000);
+    return{text:(over<24?over+'ч':Math.round(over/24)+'д')+' просрочено',overdue:true};
+  }
+  const h=Math.round(diff/3600000);
+  if(h<1)return{text:'Менее часа',overdue:false};
+  if(h<24)return{text:h+'ч осталось',overdue:false};
+  return{text:Math.round(h/24)+'д осталось',overdue:false};
+}
+
+// ── Save / Load ────────────────────────────────────
+const saveGame=()=>localStorage.setItem(SK,JSON.stringify({hp,xp,level,quests,highScores,stats,unlockedAchs}));
+function loadGame(){
+  try{const r=localStorage.getItem(SK);if(!r)return;const p=JSON.parse(r);
+    if(typeof p.hp==='number')hp=p.hp;if(typeof p.xp==='number')xp=p.xp;
+    if(typeof p.level==='number')level=p.level;if(Array.isArray(p.quests))quests=p.quests;
+    if(Array.isArray(p.highScores))highScores=p.highScores.slice(0,3);
+    if(p.stats)stats={...stats,...p.stats};if(Array.isArray(p.unlockedAchs))unlockedAchs=p.unlockedAchs;
+  }catch(e){console.error(e)}
+}
+
+// ── HUD ────────────────────────────────────────────
+function updateHUD(){
+  hp=Math.min(100,Math.max(0,hp));
+  hpFill.style.width=hp+'%';hpVal.textContent=hp+'/100';
+  if(hp>60)hpFill.style.background='linear-gradient(90deg,#27a85f,#45e88a)';
+  else if(hp>30)hpFill.style.background='linear-gradient(90deg,#a86020,#f0c040)';
+  else hpFill.style.background='linear-gradient(90deg,#a82020,#e84545)';
+  hpFill.classList.toggle('danger',hp<=20);
+  xpFill.style.width=xp+'%';xpVal.textContent=xp+'%';
+  lvlVal.textContent=level;qCnt.textContent=quests.length+' квест'+(quests.length===1?'':'ов');
+  tbDone.textContent=stats.done;tbSes.textContent=stats.sessions;
+  renderStreak();
+
+  if(hp<=0){
+    playGO();stats.sessions++;
+    const e=recordScore();saveGame();
+    spawnGOPtc();
+    G('go-sv-lvl').textContent=e.level;G('go-sv-xp').textContent=e.xp+'%';
+    G('go-sv-done').textContent=stats.done;G('go-sv-str').textContent=stats.bestStreak;
+    renderGoScores(e);setTimeout(()=>goScreen.classList.add('show'),350);
+    return;
+  }
+  saveGame();checkAchs();
+}
+
+// ── Scoreboard ─────────────────────────────────────
+const RANKS=['🥇','🥈','🥉'];
+function recordScore(){
+  const e={level,xp,done:stats.done,date:new Date().toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'numeric'})};
+  highScores.push(e);highScores.sort((a,b)=>b.level-a.level||b.xp-a.xp);
+  highScores=highScores.slice(0,3);saveGame();renderSB();return e;
+}
+function renderSB(){
+  sbList.innerHTML='';
+  if(!highScores.length){sbList.innerHTML='<li class="sb-empty">Нет рекордов — начни играть!</li>';return}
+  highScores.forEach((s,i)=>{const li=document.createElement('li');li.className='sb-item';li.innerHTML=`<span class="sb-rank">${RANKS[i]}</span><div class="sb-info"><div class="sb-level">Уровень ${s.level}</div><div class="sb-sub">XP ${s.xp}% · ${s.done||0} квестов · ${s.date}</div></div>`;sbList.appendChild(li)});
+}
+function renderGoScores(ne){
+  goScoreList.innerHTML='';
+  highScores.forEach((s,i)=>{
+    const isN=s.level===ne.level&&s.xp===ne.xp&&s.date===ne.date;
+    const li=document.createElement('li');li.className='go-si'+(isN?' new':'');
+    li.innerHTML=`<span class="go-si-rank">${RANKS[i]}</span><div class="go-si-lvl">Уровень ${s.level}</div><span class="go-si-sub">XP ${s.xp}%</span>${isN?'<span class="go-new-tag">NEW</span>':''}`;
+    goScoreList.appendChild(li);
+  });
+}
+
+// ── Game Over particles ────────────────────────────
+function spawnGOPtc(){
+  const c=G('go-ptc');c.innerHTML='';
+  const icons=['💀','🩸','⚔️','🗡️','💔'];
+  for(let i=0;i<22;i++){
+    const s=document.createElement('div');
+    s.style.cssText=`position:absolute;font-size:${18+Math.random()*28}px;left:${Math.random()*100}%;top:-60px;opacity:${.08+Math.random()*.22}`;
+    s.textContent=icons[Math.floor(Math.random()*icons.length)];
+    c.appendChild(s);
+    s.animate([{transform:'translateY(0) rotate(0deg)'},{transform:`translateY(110vh) rotate(${(Math.random()>.5?1:-1)*360}deg)`}],{duration:2200+Math.random()*3000,delay:Math.random()*2200,iterations:Infinity,easing:'linear'});
+  }
+}
+
+// ── Restart ────────────────────────────────────────
+function restart(){
+  hp=100;xp=0;level=1;quests=[];stats.streak=0;
+  goScreen.classList.remove('show');renderQuests();renderSB();updateHUD();renderAchs();
+}
+
+// ── Quest card ─────────────────────────────────────
+function createCard(quest){
+  const isO=quest&&typeof quest==='object';
+  const text=isO?quest.text:quest;
+  const pri=(isO&&quest.priority)||'mid';
+  const dueL=isO?quest.dueLabel:null;
+  const addedAt=isO?quest.addedAt:null;
+  const durationHours=isO?quest.durationHours:null;
+
+  const pc=PRI_CONFIG[pri]||PRI_CONFIG.mid;
+  const dl=deadlineLabel(addedAt,durationHours);
+
+  const card=document.createElement('div');
+  card.className=`qcard ${pc.cls}`;
+  card.innerHTML=`
+    <div class="q-title">${text}</div>
+    <div class="q-meta">
+      <span class="q-pri-badge ${pc.cls}">${pc.label}</span>
+      ${dueL?`<span class="q-dead-badge${dl&&dl.overdue?' overdue':''}">⏱ ${dl?dl.text:dueL}</span>`:''}
+    </div>
+    <div class="q-actions">
+      <button class="btn-done">✅ Выполнить <span style="opacity:.6;font-size:11px">(+15 XP)</span></button>
+      <button class="btn-fail">❌ Провалить <span style="opacity:.6;font-size:11px">(−20 HP)</span></button>
+    </div>`;
+
+  card.querySelector('.btn-done').onclick=()=>{
+    ua();card.classList.add('done-fx');
+    const r=card.querySelector('.btn-done').getBoundingClientRect();
+    const cx=r.left+r.width/2,cy=r.top+r.height/2;
+    spawnPtc(cx,cy,'✨+15 XP','#45e88a',8);spawnConf(cx,cy);
+    xp+=15;playCoin();stats.done++;stats.streak++;
+    if(stats.streak>stats.bestStreak)stats.bestStreak=stats.streak;
+    let lvled=false;if(xp>=100){level++;xp-=100;lvled=true;}
+    removeQuest(quest);showPraise();
+    card.classList.add('out');
+    setTimeout(()=>{card.remove();checkEmpty();updateHUD();if(lvled){playLvlUp();showLvlUp(level);}},260);
+  };
+
+  card.querySelector('.btn-fail').onclick=()=>{
+    ua();card.classList.add('fail-fx');
+    const r=card.querySelector('.btn-fail').getBoundingClientRect();
+    spawnPtc(r.left+r.width/2,r.top+r.height/2,'💔−20 HP','#e84545',6);
+    hp-=20;stats.failed++;stats.streak=0;playDmg();
+    Q('.hud-wrap').classList.remove('shk');void Q('.hud-wrap').offsetWidth;Q('.hud-wrap').classList.add('shk');
+    document.body.classList.remove('red-flash');void document.body.offsetWidth;document.body.classList.add('red-flash');
+    setTimeout(()=>{Q('.hud-wrap').classList.remove('shk');document.body.classList.remove('red-flash')},560);
+    removeQuest(quest);card.classList.add('out');
+    setTimeout(()=>{card.remove();checkEmpty();updateHUD();},260);
+  };
+  return card;
+}
+
+function removeQuest(q){
+  if(q&&typeof q==='object'){const i=quests.findIndex(x=>typeof x==='object'&&x.text===q.text&&x.addedAt===q.addedAt);if(i!==-1)quests.splice(i,1)}
+  else{const i=quests.indexOf(q);if(i!==-1)quests.splice(i,1)}
+}
+function checkEmpty(){
+  const ex=qlist.querySelector('.empty');
+  if(!quests.length&&!ex){qlist.innerHTML='<div class="empty"><div class="empty-ico">📜</div><div class="empty-t">Нет активных квестов</div><div class="empty-h">Добавь первый квест выше ↑</div></div>'}
+  else if(quests.length&&ex)ex.remove();
+}
+function addQuest(){
+  const text=newQuestIn.value.trim();if(!text){newQuestIn.focus();return}
+  const h=Number(durSel.value)||24;
+  const dueLabel=PRI_CONFIG[currentPri].times.find(t=>t.h===h)?.label||(h+' ч');
+  const q={text,priority:currentPri,durationHours:h,dueLabel,addedAt:Date.now()};
+  quests.push(q);const ex=qlist.querySelector('.empty');if(ex)ex.remove();
+  qlist.prepend(createCard(q));newQuestIn.value='';newQuestIn.focus();
+  saveGame();updateHUD();
+}
+function renderQuests(){
+  qlist.innerHTML='';if(!quests.length){checkEmpty();return}
+  quests.slice().reverse().forEach(q=>qlist.appendChild(createCard(q)));
+}
+
+// ── Priority tabs ──────────────────────────────────
+document.querySelectorAll('.pri-tab').forEach(tab=>{
+  tab.onclick=()=>{
+    currentPri=tab.dataset.p;
+    document.querySelectorAll('.pri-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    updateDurOptions();
+  };
+});
+
+// ── Events ─────────────────────────────────────────
+addBtn.onclick=()=>{ua();addQuest()};
+newQuestIn.onkeypress=e=>{if(e.key==='Enter'){ua();addQuest()}};
+goRestart.onclick=restart;
+document.addEventListener('click',ua,{once:true});
+
+// ── Boot ───────────────────────────────────────────
+loadGame();updateDurOptions();renderQuests();updateHUD();renderSB();renderAchs();renderStreak();
+</script>
+</body>
+</html>

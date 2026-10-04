@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">QuestDo</string>
+    <string name="title_activity_main">QuestDo</string>
+    <string name="package_name">com.myname.questdo</string>
+    <string name="custom_url_scheme">com.myname.questdo</string>
+</resources>
