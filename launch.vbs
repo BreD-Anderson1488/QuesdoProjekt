@@ -2,7 +2,7 @@ Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 
 Dim appDir
-appDir = "D:\MY_PROJEKTS\MY_PROJEKTS\QuesdoProjekt\www"
+appDir = fso.GetParentFolderName(WScript.ScriptFullName) & "\www"
 
 Dim electronCmd
 electronCmd = appDir & "\node_modules\.bin\electron.cmd"
